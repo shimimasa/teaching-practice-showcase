@@ -1,0 +1,115 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 教育者モデル
+model Educator {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String
+  name            String
+  bio             String?
+  specialties     String[]
+  contactEnabled  Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  practices       Practice[]
+}
+
+// 授業実践モデル
+model Practice {
+  id                  String    @id @default(cuid())
+  title               String
+  description         String
+  subject             String
+  gradeLevel          String    // 小1-中3
+  learningLevel       String    // basic, standard, advanced
+  specialNeeds        Boolean   @default(false)
+  implementationDate  DateTime
+  tags                String[]
+  isPublished         Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  educatorId          String
+  educator            Educator  @relation(fields: [educatorId], references: [id])
+  
+  materials           Media[]
+  comments            Comment[]
+  ratings             Rating[]
+  contacts            Contact[]
+  
+  @@index([educatorId])
+  @@index([subject])
+  @@index([gradeLevel])
+  @@index([learningLevel])
+  @@index([isPublished])
+}
+
+// メディア（ファイル）モデル
+model Media {
+  id            String    @id @default(cuid())
+  filename      String
+  originalName  String
+  mimeType      String
+  size          Int
+  url           String
+  createdAt     DateTime  @default(now())
+  
+  practiceId    String
+  practice      Practice  @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  
+  @@index([practiceId])
+}
+
+// コメントモデル
+model Comment {
+  id          String    @id @default(cuid())
+  content     String
+  authorName  String
+  createdAt   DateTime  @default(now())
+  
+  practiceId  String
+  practice    Practice  @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  
+  @@index([practiceId])
+}
+
+// 評価モデル
+model Rating {
+  id          String    @id @default(cuid())
+  score       Int       // 1-5
+  createdAt   DateTime  @default(now())
+  
+  practiceId  String
+  practice    Practice  @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  
+  @@index([practiceId])
+}
+
+// 連絡モデル
+model Contact {
+  id            String    @id @default(cuid())
+  parentName    String
+  parentEmail   String
+  childAge      Int
+  message       String
+  status        String    @default("new") // new, replied, closed
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  practiceId    String
+  practice      Practice  @relation(fields: [practiceId], references: [id])
+  
+  @@index([practiceId])
+  @@index([status])
+}
