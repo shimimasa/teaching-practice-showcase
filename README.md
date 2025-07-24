@@ -2,86 +2,153 @@
 
 学校に通えない小学生から中学生の子どもたちとその保護者が、適切な学習機会を見つけられるWebプラットフォームです。
 
-## 概要
+## 🎯 プロジェクト概要
 
-このプラットフォームは、教育者が自分の授業実践を詳細に紹介し、保護者が興味のある授業に直接アプローチできる環境を提供します。
+教育者が自分の授業実践を詳細に紹介し、保護者が子どもに適した学習機会を探して直接アプローチできるプラットフォームを提供します。
 
 ### 主な機能
 
-- 教育者による授業実践の投稿（写真、動画、資料付き）
-- 学年別・科目別・レベル別の検索とフィルタリング
-- 保護者から教育者への直接連絡
-- コメントと評価システム
-- レスポンシブデザイン対応
+- 📚 **授業実践の詳細紹介**: 写真、動画、資料を含む包括的な授業実践の紹介
+- 🔍 **高度な検索・フィルタ機能**: 学年、科目、学習レベル、特別配慮対応での絞り込み
+- 💬 **コメント・評価機能**: 授業実践へのフィードバック
+- 📧 **連絡機能**: 保護者から教育者への直接連絡
+- 👨‍🏫 **管理画面**: 教育者による授業実践の管理
+- 📱 **レスポンシブデザイン**: モバイル・タブレット対応
 
-## 技術スタック
+## 🚀 技術スタック
 
-- **フロントエンド**: Next.js 14, React 18, Tailwind CSS
-- **バックエンド**: Node.js, Express.js
-- **データベース**: PostgreSQL + Prisma ORM
-- **認証**: NextAuth.js (JWT)
-- **ファイルストレージ**: AWS S3 (本番) / Local Storage (開発)
-- **デプロイ**: Vercel (フロントエンド) + Railway/Heroku (バックエンド)
+### フロントエンド
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: React Hooks
+- **API Client**: Fetch API
 
-## プロジェクト構造
+### バックエンド
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Language**: TypeScript
+- **Database**: PostgreSQL
+- **ORM**: Prisma
+- **Authentication**: JWT
+- **File Upload**: Multer
+- **Email**: Nodemailer
+
+### インフラ・デプロイ
+- **Frontend Hosting**: Vercel
+- **Backend Hosting**: Railway
+- **File Storage**: Local/AWS S3
+- **CI/CD**: GitHub Actions
+
+## 📁 プロジェクト構造
 
 ```
 teaching-practice-showcase/
-├── frontend/          # Next.js フロントエンドアプリケーション
-├── backend/           # Express.js バックエンドAPI
-├── docs/             # プロジェクトドキュメント
-├── _docs/            # 実装ログ
-├── design.md         # 設計書
-├── requirements.md   # 要件書
-└── tasks.md          # タスクリスト
+├── frontend/                 # Next.jsフロントエンド
+│   ├── app/                 # App Router
+│   ├── components/          # Reactコンポーネント
+│   ├── hooks/              # カスタムフック
+│   └── public/             # 静的ファイル
+├── backend/                 # Express.jsバックエンド
+│   ├── src/
+│   │   ├── controllers/    # APIコントローラー
+│   │   ├── routes/         # ルーティング
+│   │   ├── middlewares/    # ミドルウェア
+│   │   ├── utils/          # ユーティリティ
+│   │   └── types/          # TypeScript型定義
+│   └── prisma/             # Prismaスキーマ
+├── _docs/                   # 実装ログ
+└── .github/workflows/       # CI/CD設定
 ```
 
-## セットアップ
+## 🔧 セットアップ
 
 ### 前提条件
-
-- Node.js 18.x 以上
-- PostgreSQL 14.x 以上
+- Node.js 18以上
+- PostgreSQL 15以上
 - npm または yarn
 
 ### インストール手順
 
+1. リポジトリのクローン
 ```bash
-# リポジトリのクローン
-git clone [repository-url]
+git clone https://github.com/your-username/teaching-practice-showcase.git
 cd teaching-practice-showcase
-
-# フロントエンドの依存関係インストール
-cd frontend
-npm install
-
-# バックエンドの依存関係インストール
-cd ../backend
-npm install
-
-# 環境変数の設定
-cp .env.example .env
-# .env ファイルを編集して必要な値を設定
-
-# データベースのセットアップ
-npx prisma migrate dev
 ```
 
-### 開発サーバーの起動
+2. バックエンドのセットアップ
+```bash
+cd backend
+npm install
+cp .env.example .env
+# .envファイルを編集して環境変数を設定
+npm run prisma:migrate
+npm run dev
+```
+
+3. フロントエンドのセットアップ
+```bash
+cd frontend
+npm install
+cp .env.example .env.local
+# .env.localファイルを編集して環境変数を設定
+npm run dev
+```
+
+## 🔐 環境変数
+
+### バックエンド (.env)
+```
+DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+JWT_SECRET=your-secret-key
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+EMAIL_USER=your-email
+EMAIL_PASS=your-password
+```
+
+### フロントエンド (.env.local)
+```
+NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+## 📝 API仕様
+
+主要なAPIエンドポイント：
+
+- `GET /api/practices` - 授業実践一覧
+- `GET /api/practices/:id` - 授業実践詳細
+- `POST /api/auth/login` - ログイン
+- `POST /api/contacts` - 連絡送信
+- `POST /api/comments` - コメント投稿
+- `POST /api/ratings` - 評価投稿
+
+## 🧪 テスト
 
 ```bash
-# フロントエンド（別ターミナル）
-cd frontend
-npm run dev
-
-# バックエンド（別ターミナル）
+# バックエンド
 cd backend
-npm run dev
+npm test
+
+# フロントエンド
+cd frontend
+npm test
 ```
 
-フロントエンド: http://localhost:3000
-バックエンドAPI: http://localhost:5000
+## 🚢 デプロイ
 
-## ライセンス
+GitHub Actionsによる自動デプロイが設定されています。
+`main`ブランチへのプッシュで本番環境にデプロイされます。
 
-[ライセンスを指定してください]
+## 📄 ライセンス
+
+このプロジェクトはMITライセンスの下で公開されています。
+
+## 👥 貢献
+
+プルリクエストを歓迎します。大きな変更の場合は、まずissueを作成して変更内容を議論してください。
+
+## 📞 サポート
+
+質問や問題がある場合は、GitHubのissueを作成してください。

@@ -25,6 +25,7 @@ export default function PracticesPage() {
     page,
     limit: 9,
     ...filters,
+    keyword: searchKeyword,
   });
 
   const handleFilterChange = useCallback((newFilters: FilterValues) => {

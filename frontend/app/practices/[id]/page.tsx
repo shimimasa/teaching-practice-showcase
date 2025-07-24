@@ -1,0 +1,291 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { notFound } from 'next/navigation';
+import Link from 'next/link';
+import CommentForm from '@/components/ui/CommentForm';
+import RatingWidget from '@/components/ui/RatingWidget';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+
+interface Practice {
+  id: string;
+  title: string;
+  description: string;
+  subject: string;
+  gradeLevel: string;
+  learningLevel: string;
+  specialNeeds: boolean;
+  implementationDate: string;
+  materials: Array<{
+    id: string;
+    filename: string;
+    originalName: string;
+    mimeType: string;
+    url: string;
+  }>;
+  tags: string[];
+  educator: {
+    id: string;
+    name: string;
+    bio: string;
+    contactEnabled: boolean;
+  };
+  ratings: Array<{
+    value: number;
+  }>;
+  comments: Array<{
+    id: string;
+    name: string;
+    content: string;
+    createdAt: string;
+  }>;
+}
+
+export default function PracticeDetailPage({ params }: { params: { id: string } }) {
+  const [practice, setPractice] = useState<Practice | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showCommentForm, setShowCommentForm] = useState(false);
+
+  useEffect(() => {
+    fetchPractice();
+  }, [params.id]);
+
+  const fetchPractice = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/practices/${params.id}`);
+      
+      if (!res.ok) {
+        notFound();
+      }
+
+      const data = await res.json();
+      setPractice(data);
+    } catch (error) {
+      console.error('Error fetching practice:', error);
+      notFound();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCommentAdded = () => {
+    fetchPractice(); // コメントが追加されたら再取得
+    setShowCommentForm(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex justify-center">
+        <LoadingSpinner size="lg" message="読み込み中..." />
+      </div>
+    );
+  }
+
+  if (!practice) {
+    notFound();
+  }
+
+  const averageRating = practice.ratings.length > 0
+    ? practice.ratings.reduce((sum, r) => sum + r.value, 0) / practice.ratings.length
+    : 0;
+
+  const learningLevelMap = {
+    basic: '基礎',
+    standard: '標準',
+    advanced: '発展',
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      {/* ヘッダー部分 */}
+      <div className="mb-8">
+        <Link 
+          href="/practices" 
+          className="text-blue-600 hover:text-blue-800 mb-4 inline-block"
+        >
+          ← 授業実践一覧に戻る
+        </Link>
+        
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">{practice.title}</h1>
+        
+        <div className="flex flex-wrap gap-2 mb-4">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+            {practice.subject}
+          </span>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+            {practice.gradeLevel}
+          </span>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+            {learningLevelMap[practice.learningLevel as keyof typeof learningLevelMap]}
+          </span>
+          {practice.specialNeeds && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
+              個別対応可
+            </span>
+          )}
+        </div>
+
+        {averageRating > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="flex">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <svg
+                  key={star}
+                  className={`w-5 h-5 ${
+                    star <= Math.round(averageRating) ? 'text-yellow-400' : 'text-gray-300'
+                  }`}
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              ))}
+            </div>
+            <span className="text-sm text-gray-600">
+              {averageRating.toFixed(1)} ({practice.ratings.length}件の評価)
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* メインコンテンツ */}
+        <div className="lg:col-span-2 space-y-8">
+          {/* 概要 */}
+          <section className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold mb-4">授業の概要</h2>
+            <p className="text-gray-700 whitespace-pre-wrap">{practice.description}</p>
+            
+            <div className="mt-4">
+              <p className="text-sm text-gray-600">
+                実施日: {new Date(practice.implementationDate).toLocaleDateString('ja-JP')}
+              </p>
+            </div>
+          </section>
+
+          {/* 教材・資料 */}
+          {practice.materials.length > 0 && (
+            <section className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">教材・資料</h2>
+              <div className="space-y-3">
+                {practice.materials.map((material) => (
+                  <div key={material.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span className="text-gray-700">{material.originalName}</span>
+                    </div>
+                    <a
+                      href={material.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      ダウンロード
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* タグ */}
+          {practice.tags.length > 0 && (
+            <section className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">タグ</h2>
+              <div className="flex flex-wrap gap-2">
+                {practice.tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* コメント */}
+          <section className="bg-white rounded-lg shadow p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">コメント ({practice.comments.length}件)</h2>
+              {!showCommentForm && (
+                <button
+                  onClick={() => setShowCommentForm(true)}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  コメントを投稿
+                </button>
+              )}
+            </div>
+            
+            {showCommentForm && (
+              <div className="mb-6">
+                <CommentForm 
+                  practiceId={practice.id}
+                  onCommentAdded={handleCommentAdded}
+                />
+                <button
+                  onClick={() => setShowCommentForm(false)}
+                  className="mt-3 text-gray-600 hover:text-gray-800 text-sm"
+                >
+                  キャンセル
+                </button>
+              </div>
+            )}
+            
+            {practice.comments.length > 0 ? (
+              <div className="space-y-4">
+                {practice.comments.map((comment) => (
+                  <div key={comment.id} className="border-b pb-4 last:border-0">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-medium text-gray-900">{comment.name}</h3>
+                      <span className="text-sm text-gray-500">
+                        {new Date(comment.createdAt).toLocaleDateString('ja-JP')}
+                      </span>
+                    </div>
+                    <p className="text-gray-700">{comment.content}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">まだコメントはありません</p>
+            )}
+          </section>
+        </div>
+
+        {/* サイドバー */}
+        <div className="space-y-6">
+          {/* 教育者情報 */}
+          <section className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4">教育者情報</h2>
+            <div className="space-y-3">
+              <h3 className="font-medium text-gray-900">{practice.educator.name}</h3>
+              <p className="text-sm text-gray-700">{practice.educator.bio}</p>
+              
+              {practice.educator.contactEnabled && (
+                <Link
+                  href={`/practices/${practice.id}/contact`}
+                  className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  この教育者に連絡する
+                </Link>
+              )}
+            </div>
+          </section>
+
+          {/* 評価 */}
+          <section className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4">評価</h2>
+            <RatingWidget 
+              practiceId={practice.id}
+              onRatingChange={() => fetchPractice()}
+            />
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}

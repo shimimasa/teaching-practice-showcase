@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import routes from './routes';
 import { errorHandler } from './middlewares/errorHandler';
 
@@ -17,6 +18,9 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Static files (uploads)
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
 // API Routes
 app.use('/api', routes);

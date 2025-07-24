@@ -11,6 +11,7 @@ interface UsePracticesOptions {
   gradeLevel?: string;
   learningLevel?: string;
   specialNeeds?: boolean;
+  keyword?: string;
 }
 
 interface UsePracticesResult {
@@ -41,6 +42,7 @@ export function usePractices(options: UsePracticesOptions = {}): UsePracticesRes
         gradeLevel: options.gradeLevel,
         learningLevel: options.learningLevel,
         specialNeeds: options.specialNeeds,
+        keyword: options.keyword,
       });
 
       setPractices(response.data.data);
@@ -62,6 +64,7 @@ export function usePractices(options: UsePracticesOptions = {}): UsePracticesRes
     options.gradeLevel,
     options.learningLevel,
     options.specialNeeds,
+    options.keyword,
   ]);
 
   return {
