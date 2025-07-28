@@ -25,7 +25,7 @@
 - **Branch**: `main`
 - **Root Directory**: `backend`
 - **Runtime**: `Node`
-- **Build Command**: `npm install && npx prisma generate`
+- **Build Command**: `npm install && npm run build && npx prisma generate`
 - **Start Command**: `npm start`
 - **Instance Type**: `Free`
 
