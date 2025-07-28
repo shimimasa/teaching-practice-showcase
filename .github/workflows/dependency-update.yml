@@ -1,0 +1,72 @@
+name: Dependency Update
+
+on:
+  schedule:
+    # 毎週月曜日の午前9時（JST）に実行
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        project: [backend, frontend]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: ${{ matrix.project }}/package-lock.json
+
+    - name: Update dependencies
+      working-directory: ./${{ matrix.project }}
+      run: |
+        # パッチバージョンの更新
+        npm update
+
+        # 脆弱性の修正
+        npm audit fix
+
+    - name: Check for changes
+      id: git-check
+      run: |
+        if [[ -n $(git status --porcelain) ]]; then
+          echo "modified=true" >> $GITHUB_OUTPUT
+        else
+          echo "modified=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create Pull Request
+      if: steps.git-check.outputs.modified == 'true'
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "chore(${{ matrix.project }}): update dependencies"
+        title: "chore(${{ matrix.project }}): update dependencies"
+        body: |
+          ## 依存関係の自動更新
+
+          このPRは自動的に生成されました。
+          
+          ### 更新内容
+          - npm updateによるパッチバージョンの更新
+          - npm audit fixによる脆弱性の修正
+
+          ### 確認事項
+          - [ ] テストが全て通過している
+          - [ ] ビルドが成功している
+          - [ ] 動作確認済み
+        branch: update-dependencies/${{ matrix.project }}-${{ github.run_number }}
+        delete-branch: true
+        labels: |
+          dependencies
+          automated

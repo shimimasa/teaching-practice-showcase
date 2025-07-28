@@ -1,0 +1,1436 @@
+openapi: 3.0.3
+info:
+  title: Game Asset Manager API
+  description: |
+    ゲーム開発用アセット管理・生成サービスのREST API仕様書
+    
+    このAPIは、ゲーム開発において必要な画像・音声アセットの管理、
+    AI生成、プロジェクト単位での整理、エクスポート機能を提供します。
+    
+    ## 認証
+    
+    JWTトークンベースの認証を使用します。
+    - アクセストークン有効期限: 15分
+    - リフレッシュトークン有効期限: 7日
+    
+    ## レート制限
+    
+    - 認証API: 5リクエスト/15分
+    - 一般API: 100リクエスト/分
+    - AI生成API: 10リクエスト/時間
+    - ファイルアップロード: 50リクエスト/時間
+    
+    ## エラーレスポンス
+    
+    全てのエラーレスポンスは統一されたフォーマットで返されます。
+  version: 1.0.0
+  contact:
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000/api
+    description: 開発サーバー
+  - url: https://api.game-asset-manager.com/api
+    description: 本番サーバー
+
+tags:
+  - name: Auth
+    description: 認証関連のエンドポイント
+  - name: Assets
+    description: アセット管理のエンドポイント
+  - name: Prompts
+    description: AIプロンプト管理のエンドポイント
+  - name: Projects
+    description: プロジェクト管理のエンドポイント
+  - name: Generation
+    description: AI生成関連のエンドポイント
+  - name: Export
+    description: エクスポート機能のエンドポイント
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Authorization: Bearer {token}"
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+        - timestamp
+        - path
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              example: "INVALID_REQUEST"
+            message:
+              type: string
+              example: "リクエストが無効です"
+            details:
+              type: object
+              description: エラーの詳細情報
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-01-28T10:00:00Z"
+        path:
+          type: string
+          example: "/api/assets"
+
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - username
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        username:
+          type: string
+          example: "johndoe"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Asset:
+      type: object
+      required:
+        - id
+        - filename
+        - originalName
+        - fileType
+        - mimeType
+        - fileSize
+        - storageUrl
+        - tags
+        - category
+        - createdAt
+        - updatedAt
+        - userId
+      properties:
+        id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+          example: "asset_12345.png"
+        originalName:
+          type: string
+          example: "character_sprite.png"
+        fileType:
+          type: string
+          enum: [image, audio]
+        mimeType:
+          type: string
+          example: "image/png"
+        fileSize:
+          type: integer
+          description: ファイルサイズ（バイト）
+          example: 1048576
+        storageUrl:
+          type: string
+          format: uri
+        thumbnailUrl:
+          type: string
+          format: uri
+          nullable: true
+        metadata:
+          type: object
+          properties:
+            width:
+              type: integer
+            height:
+              type: integer
+            duration:
+              type: number
+              description: 音声の長さ（秒）
+            bitrate:
+              type: integer
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["character", "sprite", "hero"]
+        category:
+          type: string
+          example: "characters"
+        projectIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        promptId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        userId:
+          type: string
+          format: uuid
+
+    Prompt:
+      type: object
+      required:
+        - id
+        - title
+        - content
+        - type
+        - parameters
+        - category
+        - usageCount
+        - successRate
+        - createdAt
+        - updatedAt
+        - userId
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: "ファンタジーキャラクター生成"
+        content:
+          type: string
+          example: "A heroic fantasy character with magical powers..."
+        type:
+          type: string
+          enum: [image, audio]
+        parameters:
+          type: object
+          properties:
+            style:
+              type: string
+            quality:
+              type: string
+            duration:
+              type: number
+          additionalProperties: true
+        category:
+          type: string
+          example: "character"
+        usageCount:
+          type: integer
+          example: 42
+        successRate:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.95
+        generatedAssets:
+          type: array
+          items:
+            type: string
+            format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        userId:
+          type: string
+          format: uuid
+
+    Project:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - assetIds
+        - createdAt
+        - updatedAt
+        - userId
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "RPGゲームプロジェクト"
+        description:
+          type: string
+          example: "ファンタジーRPGのアセット管理"
+        assetIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        userId:
+          type: string
+          format: uuid
+
+    AuthRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+
+    RegisterRequest:
+      allOf:
+        - $ref: '#/components/schemas/AuthRequest'
+        - type: object
+          required:
+            - username
+          properties:
+            username:
+              type: string
+              minLength: 3
+              maxLength: 30
+
+    AuthResponse:
+      type: object
+      required:
+        - accessToken
+        - refreshToken
+        - user
+      properties:
+        accessToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refreshToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        user:
+          $ref: '#/components/schemas/User'
+
+    GenerationRequest:
+      type: object
+      required:
+        - prompt
+        - type
+      properties:
+        prompt:
+          type: string
+          description: 生成に使用するプロンプト
+        type:
+          type: string
+          enum: [image, audio]
+        parameters:
+          type: object
+          description: 生成パラメータ
+          properties:
+            style:
+              type: string
+            quality:
+              type: string
+              enum: [standard, high]
+            duration:
+              type: number
+              description: 音声の長さ（秒）
+
+    GenerationStatus:
+      type: object
+      required:
+        - jobId
+        - status
+        - createdAt
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        progress:
+          type: number
+          minimum: 0
+          maximum: 100
+        result:
+          type: object
+          properties:
+            assetId:
+              type: string
+              format: uuid
+            url:
+              type: string
+              format: uri
+        error:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    ExportRequest:
+      type: object
+      required:
+        - assetIds
+        - format
+      properties:
+        assetIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+        format:
+          type: string
+          enum: [zip, tar]
+        options:
+          type: object
+          properties:
+            imageFormat:
+              type: string
+              enum: [png, jpg, webp]
+            imageQuality:
+              type: integer
+              minimum: 1
+              maximum: 100
+            audioFormat:
+              type: string
+              enum: [mp3, ogg, wav]
+            audioBitrate:
+              type: integer
+            includeMetadata:
+              type: boolean
+              default: true
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: 新規ユーザー登録
+      description: |
+        新しいユーザーアカウントを作成します。
+        パスワードは8文字以上、大文字・小文字・数字・特殊文字を含む必要があります。
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              valid:
+                value:
+                  email: "user@example.com"
+                  password: "SecurePass123!"
+                  username: "johndoe"
+      responses:
+        '201':
+          description: 登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                emailExists:
+                  value:
+                    error:
+                      code: "EMAIL_EXISTS"
+                      message: "このメールアドレスは既に登録されています"
+                    timestamp: "2025-01-28T10:00:00Z"
+                    path: "/api/auth/register"
+        '429':
+          description: レート制限
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: ログイン
+      description: メールアドレスとパスワードでログインし、JWTトークンを取得します。
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: 認証失敗
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: レート制限
+
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: トークンリフレッシュ
+      description: リフレッシュトークンを使用して新しいアクセストークンを取得します。
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: リフレッシュ成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        '401':
+          description: 無効なリフレッシュトークン
+
+  /auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: ログアウト
+      description: 現在のリフレッシュトークンを無効化します。
+      operationId: logout
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: ログアウト成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "ログアウトしました"
+
+  /assets:
+    get:
+      tags:
+        - Assets
+      summary: アセット一覧取得
+      description: |
+        ユーザーのアセット一覧を取得します。
+        ページネーション、フィルタリング、ソートをサポートしています。
+      operationId: getAssets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: fileType
+          in: query
+          schema:
+            type: string
+            enum: [image, audio]
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: ファイル名で検索
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [createdAt, updatedAt, filename, fileSize]
+            default: createdAt
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Asset'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+                      totalPages:
+                        type: integer
+        '401':
+          description: 認証エラー
+
+    post:
+      tags:
+        - Assets
+      summary: アセットアップロード
+      description: |
+        新しいアセットファイルをアップロードします。
+        - 画像: 最大10MB (PNG, JPG, GIF, WebP)
+        - 音声: 最大50MB (MP3, OGG, WAV)
+      operationId: uploadAsset
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                tags:
+                  type: array
+                  items:
+                    type: string
+                category:
+                  type: string
+      responses:
+        '201':
+          description: アップロード成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                fileTooLarge:
+                  value:
+                    error:
+                      code: "FILE_TOO_LARGE"
+                      message: "ファイルサイズが制限を超えています"
+                    timestamp: "2025-01-28T10:00:00Z"
+                    path: "/api/assets"
+        '401':
+          description: 認証エラー
+        '429':
+          description: レート制限
+
+  /assets/{assetId}:
+    get:
+      tags:
+        - Assets
+      summary: アセット詳細取得
+      description: 指定されたIDのアセット詳細情報を取得します。
+      operationId: getAsset
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '401':
+          description: 認証エラー
+        '404':
+          description: アセットが見つかりません
+
+    put:
+      tags:
+        - Assets
+      summary: アセット更新
+      description: アセットのメタデータ（タグ、カテゴリ）を更新します。
+      operationId: updateAsset
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tags:
+                  type: array
+                  items:
+                    type: string
+                category:
+                  type: string
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '401':
+          description: 認証エラー
+        '404':
+          description: アセットが見つかりません
+
+    delete:
+      tags:
+        - Assets
+      summary: アセット削除
+      description: アセットを削除します。関連するファイルも削除されます。
+      operationId: deleteAsset
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 削除成功
+        '401':
+          description: 認証エラー
+        '404':
+          description: アセットが見つかりません
+
+  /assets/search:
+    get:
+      tags:
+        - Assets
+      summary: アセット検索
+      description: 詳細な条件でアセットを検索します。
+      operationId: searchAssets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 検索クエリ
+        - name: fileType
+          in: query
+          schema:
+            type: string
+            enum: [image, audio]
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 検索結果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Asset'
+                  count:
+                    type: integer
+
+  /prompts:
+    get:
+      tags:
+        - Prompts
+      summary: プロンプト一覧取得
+      description: 保存されたプロンプトの一覧を取得します。
+      operationId: getPrompts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [image, audio]
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [createdAt, usageCount, successRate]
+            default: createdAt
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prompts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Prompt'
+
+    post:
+      tags:
+        - Prompts
+      summary: プロンプト作成
+      description: 新しいプロンプトを保存します。
+      operationId: createPrompt
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - content
+                - type
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                type:
+                  type: string
+                  enum: [image, audio]
+                parameters:
+                  type: object
+                category:
+                  type: string
+      responses:
+        '201':
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prompt'
+
+  /prompts/{promptId}:
+    get:
+      tags:
+        - Prompts
+      summary: プロンプト詳細取得
+      operationId: getPrompt
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: promptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prompt'
+
+    put:
+      tags:
+        - Prompts
+      summary: プロンプト更新
+      operationId: updatePrompt
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: promptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                parameters:
+                  type: object
+                category:
+                  type: string
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prompt'
+
+    delete:
+      tags:
+        - Prompts
+      summary: プロンプト削除
+      operationId: deletePrompt
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: promptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 削除成功
+
+  /prompts/{promptId}/execute:
+    post:
+      tags:
+        - Prompts
+      summary: プロンプト実行
+      description: |
+        保存されたプロンプトを実行してアセットを生成します。
+        生成は非同期で実行され、ジョブIDが返されます。
+      operationId: executePrompt
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: promptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  description: 実行時パラメータ（オプション）
+      responses:
+        '202':
+          description: 実行開始
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationStatus'
+        '401':
+          description: 認証エラー
+        '404':
+          description: プロンプトが見つかりません
+        '429':
+          description: レート制限
+
+  /projects:
+    get:
+      tags:
+        - Projects
+      summary: プロジェクト一覧取得
+      operationId: getProjects
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+
+    post:
+      tags:
+        - Projects
+      summary: プロジェクト作成
+      operationId: createProject
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /projects/{projectId}:
+    get:
+      tags:
+        - Projects
+      summary: プロジェクト詳細取得
+      operationId: getProject
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    $ref: '#/components/schemas/Project'
+                  assets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Asset'
+
+    put:
+      tags:
+        - Projects
+      summary: プロジェクト更新
+      operationId: updateProject
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '200':
+          description: 更新成功
+
+    delete:
+      tags:
+        - Projects
+      summary: プロジェクト削除
+      description: プロジェクトを削除します。アセットは削除されません。
+      operationId: deleteProject
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 削除成功
+
+  /projects/{projectId}/assets:
+    post:
+      tags:
+        - Projects
+      summary: アセットをプロジェクトに追加
+      operationId: addAssetToProject
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - assetIds
+              properties:
+                assetIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: 追加成功
+
+    delete:
+      tags:
+        - Projects
+      summary: アセットをプロジェクトから削除
+      operationId: removeAssetFromProject
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - assetIds
+              properties:
+                assetIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: 削除成功
+
+  /generate/image:
+    post:
+      tags:
+        - Generation
+      summary: 画像生成
+      description: |
+        AIを使用して画像を生成します。
+        OpenAI DALL-E APIを使用します。
+        生成は非同期で実行されます。
+      operationId: generateImage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerationRequest'
+            examples:
+              character:
+                value:
+                  prompt: "A heroic fantasy warrior with glowing armor"
+                  type: "image"
+                  parameters:
+                    style: "digital art"
+                    quality: "high"
+      responses:
+        '202':
+          description: 生成開始
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationStatus'
+        '400':
+          description: 無効なリクエスト
+        '429':
+          description: レート制限
+        '503':
+          description: AI APIが利用不可
+
+  /generate/audio:
+    post:
+      tags:
+        - Generation
+      summary: 音声生成
+      description: |
+        AIを使用して音声/音楽を生成します。
+        生成は非同期で実行されます。
+      operationId: generateAudio
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerationRequest'
+            examples:
+              bgm:
+                value:
+                  prompt: "Epic battle music for RPG game"
+                  type: "audio"
+                  parameters:
+                    duration: 60
+      responses:
+        '202':
+          description: 生成開始
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationStatus'
+
+  /generate/status/{jobId}:
+    get:
+      tags:
+        - Generation
+      summary: 生成ステータス確認
+      description: 非同期生成ジョブのステータスを確認します。
+      operationId: getGenerationStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: ステータス情報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationStatus'
+        '404':
+          description: ジョブが見つかりません
+
+  /export:
+    post:
+      tags:
+        - Export
+      summary: アセットエクスポート
+      description: |
+        選択したアセットをアーカイブ形式でエクスポートします。
+        画像・音声の形式変換もサポートしています。
+      operationId: exportAssets
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+            examples:
+              simple:
+                value:
+                  assetIds: ["asset-id-1", "asset-id-2"]
+                  format: "zip"
+              withConversion:
+                value:
+                  assetIds: ["asset-id-1", "asset-id-2"]
+                  format: "zip"
+                  options:
+                    imageFormat: "webp"
+                    imageQuality: 85
+                    audioFormat: "mp3"
+                    audioBitrate: 192
+      responses:
+        '200':
+          description: エクスポート完了
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  downloadUrl:
+                    type: string
+                    format: uri
+                  expiresAt:
+                    type: string
+                    format: date-time
+        '400':
+          description: 無効なリクエスト
+
+  /export/project/{projectId}:
+    post:
+      tags:
+        - Export
+      summary: プロジェクト全体エクスポート
+      description: プロジェクトに含まれる全アセットをエクスポートします。
+      operationId: exportProject
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                format:
+                  type: string
+                  enum: [zip, tar]
+                  default: zip
+                options:
+                  $ref: '#/components/schemas/ExportRequest/properties/options'
+      responses:
+        '200':
+          description: エクスポート完了
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  downloadUrl:
+                    type: string
+                    format: uri
+                  expiresAt:
+                    type: string
+                    format: date-time
+                  manifest:
+                    type: object
+                    description: エクスポートされたアセットの詳細情報
+
+security:
+  - bearerAuth: []

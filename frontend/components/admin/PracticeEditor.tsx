@@ -12,6 +12,7 @@ interface PracticeFormData {
   gradeLevel: string;
   learningLevel: string;
   specialNeeds: boolean;
+  specialNeedsDetails: string;
   implementationDate: string;
   tags: string[];
   isPublished: boolean;
@@ -37,6 +38,7 @@ export default function PracticeEditor({ practiceId, onSave }: PracticeEditorPro
     gradeLevel: '',
     learningLevel: '',
     specialNeeds: false,
+    specialNeedsDetails: '',
     implementationDate: '',
     tags: [],
     isPublished: false,
@@ -95,6 +97,7 @@ export default function PracticeEditor({ practiceId, onSave }: PracticeEditorPro
         gradeLevel: data.gradeLevel,
         learningLevel: data.learningLevel,
         specialNeeds: data.specialNeeds,
+        specialNeedsDetails: data.specialNeedsDetails || '',
         implementationDate: data.implementationDate.split('T')[0],
         tags: data.tags || [],
         isPublished: data.isPublished,
@@ -356,6 +359,23 @@ export default function PracticeEditor({ practiceId, onSave }: PracticeEditorPro
             特別な配慮が必要な子ども向け
           </span>
         </label>
+
+        {formData.specialNeeds && (
+          <div>
+            <label htmlFor="specialNeedsDetails" className="block text-sm font-medium text-gray-700 mb-2">
+              特別配慮の詳細
+            </label>
+            <textarea
+              id="specialNeedsDetails"
+              name="specialNeedsDetails"
+              value={formData.specialNeedsDetails}
+              onChange={handleChange}
+              rows={3}
+              placeholder="どのような配慮が必要か、具体的に記述してください（例：視覚的な支援が必要、個別の声かけが必要など）"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        )}
 
         <label className="flex items-center">
           <input

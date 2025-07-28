@@ -1,0 +1,122 @@
+name: Code Quality
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  # Prettierによるフォーマットチェック
+  prettier:
+    name: Prettier Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Prettier
+      run: npm install -g prettier
+
+    - name: Check Backend formatting
+      working-directory: ./backend
+      run: |
+        echo "Checking TypeScript files..."
+        prettier --check "src/**/*.{ts,tsx}"
+      continue-on-error: true
+
+    - name: Check Frontend formatting
+      working-directory: ./frontend
+      run: |
+        echo "Checking TypeScript/TSX files..."
+        prettier --check "{app,components,hooks,lib,types}/**/*.{ts,tsx}"
+      continue-on-error: true
+
+  # TypeScriptの型チェック
+  typescript:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        project: [backend, frontend]
+
+    defaults:
+      run:
+        working-directory: ./${{ matrix.project }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: ${{ matrix.project }}/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Generate Prisma Client (Backend only)
+      if: matrix.project == 'backend'
+      run: npx prisma generate
+
+    - name: Run TypeScript compiler
+      run: npx tsc --noEmit
+
+  # ESLintによるコード品質チェック
+  eslint:
+    name: ESLint Check
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        project: [backend, frontend]
+
+    defaults:
+      run:
+        working-directory: ./${{ matrix.project }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: ${{ matrix.project }}/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run ESLint
+      run: npm run lint
+
+  # コミットメッセージのチェック
+  commitlint:
+    name: Commit Message Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install commitlint
+      run: |
+        npm install -g @commitlint/cli @commitlint/config-conventional
+
+    - name: Validate PR commits
+      run: |
+        npx commitlint --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} --to ${{ github.event.pull_request.head.sha }} --verbose

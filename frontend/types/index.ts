@@ -17,6 +17,7 @@ export interface Practice {
   gradeLevel: string;
   learningLevel: 'basic' | 'standard' | 'advanced';
   specialNeeds: boolean;
+  specialNeedsDetails?: string;
   implementationDate: string;
   tags: string[];
   isPublished: boolean;

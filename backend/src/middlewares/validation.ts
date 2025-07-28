@@ -1,5 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from './errorHandler';
+import validator from 'validator';
+
+// XSS対策用のサニタイズ関数
+function sanitizeInput(input: string): string {
+  return validator.escape(input.trim());
+}
 
 export const validatePractice = (req: Request, res: Response, next: NextFunction) => {
   const { title, description, subject, gradeLevel, learningLevel } = req.body;
@@ -10,6 +16,21 @@ export const validatePractice = (req: Request, res: Response, next: NextFunction
 
   if (!description || description.trim().length === 0) {
     return next(new AppError('説明は必須です', 400));
+  }
+
+  // 入力値のサニタイズ
+  req.body.title = sanitizeInput(title);
+  req.body.description = sanitizeInput(description);
+  req.body.subject = sanitizeInput(subject);
+  req.body.gradeLevel = sanitizeInput(gradeLevel);
+
+  // 文字数制限の確認
+  if (title.length > 100) {
+    return next(new AppError('タイトルは100文字以内で入力してください', 400));
+  }
+
+  if (description.length > 5000) {
+    return next(new AppError('説明は5000文字以内で入力してください', 400));
   }
 
   if (!subject || subject.trim().length === 0) {
@@ -30,6 +51,44 @@ export const validatePractice = (req: Request, res: Response, next: NextFunction
 
   if (!learningLevel || !['basic', 'standard', 'advanced'].includes(learningLevel)) {
     return next(new AppError('学習レベルは basic, standard, advanced のいずれかである必要があります', 400));
+  }
+
+  // 特別配慮詳細のサニタイズ（存在する場合）
+  if (req.body.specialNeedsDetails) {
+    req.body.specialNeedsDetails = sanitizeInput(req.body.specialNeedsDetails);
+    
+    if (req.body.specialNeedsDetails.length > 1000) {
+      return next(new AppError('特別配慮の詳細は1000文字以内で入力してください', 400));
+    }
+  }
+
+  next();
+};
+
+// 汎用的な入力検証ミドルウェア
+export const sanitizeInputs = (req: Request, res: Response, next: NextFunction) => {
+  // リクエストボディの全ての文字列フィールドをサニタイズ
+  const sanitizeObject = (obj: any): any => {
+    if (typeof obj === 'string') {
+      return sanitizeInput(obj);
+    }
+    if (Array.isArray(obj)) {
+      return obj.map(sanitizeObject);
+    }
+    if (obj && typeof obj === 'object') {
+      const sanitized: any = {};
+      for (const key in obj) {
+        if (obj.hasOwnProperty(key)) {
+          sanitized[key] = sanitizeObject(obj[key]);
+        }
+      }
+      return sanitized;
+    }
+    return obj;
+  };
+
+  if (req.body) {
+    req.body = sanitizeObject(req.body);
   }
 
   next();

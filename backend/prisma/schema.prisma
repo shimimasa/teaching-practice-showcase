@@ -34,6 +34,7 @@ model Practice {
   gradeLevel          String    // 小1-中3
   learningLevel       String    // basic, standard, advanced
   specialNeeds        Boolean   @default(false)
+  specialNeedsDetails String?   // 特別配慮の詳細説明
   implementationDate  DateTime
   tags                String[]
   isPublished         Boolean   @default(false)

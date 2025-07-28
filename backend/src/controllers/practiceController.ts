@@ -49,6 +49,9 @@ export const getPractices = async (req: Request, res: Response, next: NextFuncti
       prisma.practice.count({ where }),
     ]);
 
+    // キャッシュヘッダーを設定（公開データなので5分間キャッシュ）
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600');
+    
     res.json({
       success: true,
       data: practices,
@@ -107,6 +110,11 @@ export const getPracticeById = async (req: Request, res: Response, next: NextFun
       ? practice.ratings.reduce((sum, r) => sum + r.score, 0) / practice.ratings.length
       : 0;
 
+    // 公開されている授業実践は5分間キャッシュ
+    if (practice.isPublished) {
+      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600');
+    }
+    
     res.json({
       success: true,
       data: {
@@ -134,6 +142,7 @@ export const createPractice = async (req: AuthRequest, res: Response, next: Next
       gradeLevel,
       learningLevel,
       specialNeeds,
+      specialNeedsDetails,
       implementationDate,
       tags,
       isPublished,
@@ -147,6 +156,7 @@ export const createPractice = async (req: AuthRequest, res: Response, next: Next
         gradeLevel,
         learningLevel,
         specialNeeds: specialNeeds || false,
+        specialNeedsDetails: specialNeeds ? specialNeedsDetails : null,
         implementationDate: new Date(implementationDate),
         tags: tags || [],
         isPublished: isPublished || false,

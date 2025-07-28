@@ -12,6 +12,7 @@ interface UsePracticesOptions {
   learningLevel?: string;
   specialNeeds?: boolean;
   keyword?: string;
+  initialData?: Practice[];
 }
 
 interface UsePracticesResult {
@@ -24,8 +25,8 @@ interface UsePracticesResult {
 }
 
 export function usePractices(options: UsePracticesOptions = {}): UsePracticesResult {
-  const [practices, setPractices] = useState<Practice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [practices, setPractices] = useState<Practice[]>(options.initialData || []);
+  const [loading, setLoading] = useState(!options.initialData);
   const [error, setError] = useState<Error | null>(null);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
